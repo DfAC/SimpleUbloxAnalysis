@@ -1,0 +1,117 @@
+---
+title: "Oystein Jamming Trials"
+author: "LKB"
+output: html_document
+---
+
+```{r, echo=FALSE}
+setwd("d:/a/SimpleUbloxAnalysis")
+DataUrl<-file.path(getwd(),"SV.csv")
+
+#knitting settings
+require(knitr)
+opts_chunk$set(echo = TRUE, cache = TRUE, cache.path = "cache/",  warning=FALSE)
+#fig.path = "figure/",
+```
+# Intro
+
+To run this script make sure that *CheckKeithData.bat* is run first. If I would use dual frequency system I could obtain following information:
+
+ColNo | RinDump | Meaning |
+ :---| :---:| :---:
+1 | wk | GPS week
+2 | secs-of-wk | Seconds of GPS week
+3 | sat | SV ID
+4 | S5X | L5_SNR
+5 | C5X | L5_PR
+6 | L5X | L5_CP
+7 | S2P | L2_SNR
+8 | S1P | L1_SNR
+9 | REL | Relativity Correction
+10 | SCL | SV Clocks Correction
+11 | TRP | Tropo Delay
+12 | RNG | Ephemeris Range
+13 | AZI | Elev of SV (in relation to user)
+14 | ELE | Elev of SV (in relation to user)
+15 | C2P | L2_PR P code
+16 | C1C | L1_PR C/A code
+17 | L2C | L2 CP
+18 | L1P | L1_CP
+
+: RinDump output explained
+
+With single frequency uBx chipset only part of this is available to us.
+
+
+Lets define all types of SV
+
+```{r}
+GLONASS=c('R01','R02','R03','R09','R10','R11','R18','R19','R20','R21')
+GPS=c('G02','G04','G10','G12','G14','G20','G23','G25','G29','G31')
+GPS_IIF='G12'    #transmit','L2C','and','L5)
+GPS_IIRM=c('G25','G29','G31')  #transmits','L2C','(and','L5??','how??)
+```
+
+
+# Working with data
+
+##Prepare dataset
+```{r, echo=FALSE}
+cnames <-c('GPStime','SV_ID','L1_SNR','L1_PR','L1_CP')
+cClass <-c('numeric','factor','numeric','numeric','numeric')
+
+GNSS_Data <- read.table(DataUrl, comment.char = "t", header = FALSE, sep = ",", na.strings = "",col.names = cnames)
+
+#Lets see if we set classes properly
+sapply(GNSS_Data,class)
+
+
+#lets add extra column -> GNSSType
+GNSS_Data$GNSSType <- ifelse(GNSS_Data$SV_ID %in% GLONASS,'GLO','GPS')
+
+```
+
+
+
+##Clean dataset
+
+Do we want to remove anything?
+* visible for most of the trials with elevation above 20 deg
+* some errous SNR==0 exist. Remove them.
+
+```{r}
+#Remove low SV
+#LowSV=c('R01','R18','R21','G10','G14','G20','G23')
+#GNSS_Data <- subset(GNSS_Data,!(SV_ID %in% LowSV))
+#implement this using ELE column
+
+
+##remove obs with SNR==0
+SNRcol <- c('L1_SNR') #all SNR columns
+#('L1_SNR','L2_SNR','L5_SNR') #all SNR columns
+GNSS_Data[,SNRcol][GNSS_Data[,SNRcol]==0] <- NA
+
+#if u wqant to delete column use
+##Data[,c("Date","Time")]<-list(NULL)
+
+
+```
+
+
+
+# Visualising data
+
+###Check for SNR plots
+Lets see signal performance using SNR columns only
+
+```{r, echo=FALSE}
+library(ggplot2)
+#check elevation
+plot <- qplot(GPStime,L1_SNR, data = GNSS_Data)
+plot + geom_line(aes(colour = GNSSType)) + theme_bw()+facet_wrap(~SV_ID, nrow = 4, ncol = NULL,drop=T)+theme(legend.position="none")+geom_hline(yintercept=20,color="red") + labs(title='SV SNR during trials')
+
+
+
+```
+
+
