@@ -1,5 +1,5 @@
 ---
-title: "Oystein Jamming Trials"
+title: "simple uBx analysis"
 author: "LKB"
 output: html_document
 ---
